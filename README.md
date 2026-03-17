@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Terms Analyzer
+
+AI-powered Terms & Conditions analyzer. Paste any legal agreement and instantly get:
+
+- **Risk Level** — LOW / MEDIUM / HIGH assessment with explanation
+- **Plain-English Summary** — 2–4 sentences, no jargon
+- **Hidden Costs & Shenanigans** — auto-renewals, arbitration clauses, data selling, liability waivers, and more
+- **Key Highlights** — the 5–10 things you actually need to know
+- **Legal Clarity Score** — how readable the document is (1–10)
+
+Built with Next.js 15, MongoDB (caching), OpenAI GPT-4o, and Tailwind CSS. Includes dark mode.
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 15 (App Router, TypeScript) |
+| AI | OpenAI GPT-4o |
+| Database | MongoDB + Mongoose |
+| Styling | Tailwind CSS v4 |
+| Icons | Lucide React |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone and install
+
+```bash
+git clone <repo-url>
+cd terms-analyzer
+npm install
+```
+
+### 2. Set up environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```bash
+OPENAI_API_KEY=sk-...         # https://platform.openai.com/api-keys
+MONGODB_URI=mongodb+srv://... # Atlas or local: mongodb://localhost:27017/terms-analyzer
+```
+
+### 3. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+src/
+├── app/
+│   ├── api/analyze/route.ts   # POST: analyze T&C  |  GET: history
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx               # Single-page app
+├── components/
+│   ├── Header.tsx             # Logo + dark mode toggle
+│   ├── InputPanel.tsx         # Textarea + submit
+│   ├── ResultsPanel.tsx       # Composes all result cards
+│   ├── SummaryCard.tsx
+│   ├── RiskBadge.tsx
+│   ├── ShenanigansCard.tsx
+│   ├── HighlightsCard.tsx
+│   ├── ClarityCard.tsx
+│   ├── HistoryPanel.tsx       # Recent analyses
+│   └── LoadingOverlay.tsx
+├── contexts/
+│   └── ThemeContext.tsx       # Dark mode
+├── lib/
+│   ├── mongodb.ts             # Mongoose singleton
+│   └── openai.ts             # OpenAI client + system prompt
+├── models/
+│   └── Analysis.ts           # Mongoose schema
+└── types/
+    └── analysis.ts           # Shared TypeScript interfaces
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### `POST /api/analyze`
 
-## Deploy on Vercel
+Analyze a Terms & Conditions document.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Request:**
+```json
+{ "text": "raw T&C text..." }
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Response:**
+```json
+{
+  "success": true,
+  "cached": false,
+  "data": {
+    "summary": "...",
+    "riskLevel": "HIGH",
+    "riskRationale": "...",
+    "shenanigans": [{ "clause": "...", "explanation": "...", "severity": "HIGH" }],
+    "highlights": ["..."],
+    "legalClarity": { "score": 4, "label": "Dense legalese", "explanation": "..." }
+  }
+}
+```
+
+### `GET /api/analyze`
+
+Returns the 10 most recent analyses (preview only).
+
+---
+
+## Caching
+
+Identical inputs (by SHA-256 hash) return cached results for up to 7 days, avoiding redundant API calls. MongoDB documents are auto-deleted after 30 days via TTL index.
+
+---
+
+## Disclaimer
+
+This tool is for **informational purposes only** and does not constitute legal advice. Always consult a qualified attorney for legal matters.
