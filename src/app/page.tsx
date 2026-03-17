@@ -137,7 +137,7 @@ export default function Home() {
 
       <footer className="mt-12 border-t border-zinc-200 py-6 text-center dark:border-zinc-800">
         <p className="text-xs text-zinc-400 dark:text-zinc-600">
-          Powered by GPT-4o · Not legal advice · For informational purposes only
+          Powered by Qwen3.5-Flash · Not legal advice · For informational purposes only
         </p>
       </footer>
     </div>

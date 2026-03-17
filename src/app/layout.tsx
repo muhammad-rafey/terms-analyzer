@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Terms Analyzer — AI-powered legal clarity',
   description:
-    'Paste any Terms & Conditions and instantly get a plain-English summary, risk assessment, hidden cost detection, and key highlights powered by GPT-4o.',
+    'Paste any Terms & Conditions and instantly get a plain-English summary, risk assessment, hidden cost detection, and key highlights powered by Qwen3.5-Flash.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

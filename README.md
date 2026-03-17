@@ -8,7 +8,7 @@ AI-powered Terms & Conditions analyzer. Paste any legal agreement and instantly 
 - **Key Highlights** — the 5–10 things you actually need to know
 - **Legal Clarity Score** — how readable the document is (1–10)
 
-Built with Next.js 15, MongoDB (caching), OpenAI GPT-4o, and Tailwind CSS. Includes dark mode.
+Built with Next.js 15, MongoDB (caching), Qwen3.5-Flash, and Tailwind CSS. Includes dark mode.
 
 ---
 
@@ -17,7 +17,7 @@ Built with Next.js 15, MongoDB (caching), OpenAI GPT-4o, and Tailwind CSS. Inclu
 | Layer | Tech |
 |-------|------|
 | Framework | Next.js 15 (App Router, TypeScript) |
-| AI | OpenAI GPT-4o |
+| AI | Qwen3.5-Flash (via OpenAI-compatible SDK) |
 | Database | MongoDB + Mongoose |
 | Styling | Tailwind CSS v4 |
 | Icons | Lucide React |
@@ -43,7 +43,8 @@ cp .env.example .env.local
 Edit `.env.local`:
 
 ```bash
-OPENAI_API_KEY=sk-...         # https://platform.openai.com/api-keys
+QWEN_API_KEY=...              # https://dashscope.console.aliyun.com/
+QWEN_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
 MONGODB_URI=mongodb+srv://... # Atlas or local: mongodb://localhost:27017/terms-analyzer
 ```
 
@@ -81,7 +82,7 @@ src/
 │   └── ThemeContext.tsx       # Dark mode
 ├── lib/
 │   ├── mongodb.ts             # Mongoose singleton
-│   └── openai.ts             # OpenAI client + system prompt
+│   └── qwen.ts               # Qwen client + system prompt
 ├── models/
 │   └── Analysis.ts           # Mongoose schema
 └── types/

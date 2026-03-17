@@ -1,29 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { z } from 'zod';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Analysis } from '@/models/Analysis';
-import { getOpenAIClient, SYSTEM_PROMPT } from '@/lib/openai';
-import type { AnalysisResult, AnalysisResponse, HistoryItem } from '@/types/analysis';
+import { getQwenClient, MODEL, SYSTEM_PROMPT } from '@/lib/qwen';
+import type { AnalysisResponse, HistoryItem } from '@/types/analysis';
+
+// ── Zod schema for Qwen response validation ───────────────────────────────────
+
+const RiskLevelSchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+
+const ShenanigansSchema = z.object({
+  clause: z.string(),
+  explanation: z.string(),
+  severity: RiskLevelSchema,
+});
+
+const AnalysisResultSchema = z.object({
+  summary: z.string(),
+  riskLevel: RiskLevelSchema,
+  riskRationale: z.string(),
+  shenanigans: z.array(ShenanigansSchema).default([]),
+  highlights: z.array(z.string()).default([]),
+  legalClarity: z.object({
+    score: z.number().int().min(1).max(10),
+    label: z.string(),
+    explanation: z.string(),
+  }),
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function hashText(text: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(text.trim().toLowerCase())
-    .digest('hex');
+  return crypto.createHash('sha256').update(text.trim().toLowerCase()).digest('hex');
 }
 
-function isValidAnalysisResult(obj: unknown): obj is AnalysisResult {
-  if (!obj || typeof obj !== 'object') return false;
-  const o = obj as Record<string, unknown>;
-  return (
-    typeof o.summary === 'string' &&
-    ['LOW', 'MEDIUM', 'HIGH'].includes(o.riskLevel as string) &&
-    typeof o.riskRationale === 'string' &&
-    Array.isArray(o.shenanigans) &&
-    Array.isArray(o.highlights) &&
-    typeof o.legalClarity === 'object'
-  );
-}
+// ── POST /api/analyze ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,21 +83,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data, cached: true });
     }
 
+    // ── Call Qwen ─────────────────────────────────────────────────────────────
+
     const start = Date.now();
 
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `Analyze the following Terms & Conditions text:\n\n---\n${text}\n---`,
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-    });
+    const completion = await getQwenClient().chat.completions.create(
+      {
+        model: MODEL,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `Analyze the following Terms & Conditions text and return a JSON object:\n\n---\n${text}\n---`,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+        // @ts-ignore — Qwen-specific, not in OpenAI types
+        extra_body: { enable_thinking: false },
+      },
+      { timeout: 90000 }
+    );
 
     const processingTimeMs = Date.now() - start;
     const tokensUsed = completion.usage?.total_tokens ?? 0;
@@ -101,23 +120,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isValidAnalysisResult(parsed)) {
+    const validated = AnalysisResultSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.error('[analyze] Zod validation failed:', validated.error.issues);
       return NextResponse.json(
         { success: false, error: 'AI response was missing required fields. Please try again.' },
         { status: 500 }
       );
     }
 
+    const result = validated.data;
+
     const analysis = await Analysis.create({
       inputHash,
       rawText: text,
-      summary: parsed.summary,
-      riskLevel: parsed.riskLevel,
-      riskRationale: parsed.riskRationale,
-      shenanigans: parsed.shenanigans,
-      highlights: parsed.highlights,
-      legalClarity: parsed.legalClarity,
-      modelUsed: 'gpt-4o',
+      summary: result.summary,
+      riskLevel: result.riskLevel,
+      riskRationale: result.riskRationale,
+      shenanigans: result.shenanigans,
+      highlights: result.highlights,
+      legalClarity: result.legalClarity,
+      modelUsed: MODEL,
       tokensUsed,
       processingTimeMs,
     });
@@ -146,6 +169,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ── GET /api/analyze — history ────────────────────────────────────────────────
+
 export async function GET() {
   try {
     await connectToDatabase();
@@ -166,9 +191,6 @@ export async function GET() {
     return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error('[analyze/history] error:', err);
-    return NextResponse.json(
-      { success: false, error: 'Failed to load history.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to load history.' }, { status: 500 });
   }
 }

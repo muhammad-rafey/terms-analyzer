@@ -22,7 +22,7 @@ export default function ResultsPanel({ analysis, processingMs, cached }: Props) 
             </span>
           )}
           {processingMs !== undefined && !cached && (
-            <span>{(processingMs / 1000).toFixed(1)}s via GPT-4o</span>
+            <span>{(processingMs / 1000).toFixed(1)}s via Qwen3.5-Flash</span>
           )}
         </div>
       </div>

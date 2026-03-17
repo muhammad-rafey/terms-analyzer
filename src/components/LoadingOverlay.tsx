@@ -9,7 +9,7 @@ export default function LoadingOverlay() {
         <div className="h-6 w-24 rounded-full bg-zinc-200 dark:bg-zinc-700" />
       </div>
       <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-2">
-        Analyzing with GPT-4o...
+        Analyzing with Qwen3.5-Flash...
       </p>
 
       {/* Shimmer cards */}

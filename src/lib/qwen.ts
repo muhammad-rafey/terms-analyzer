@@ -2,18 +2,25 @@ import OpenAI from 'openai';
 
 let _client: OpenAI | null = null;
 
-export function getOpenAIClient(): OpenAI {
+export function getQwenClient(): OpenAI {
   if (!_client) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('Please define the OPENAI_API_KEY environment variable');
-    }
-    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const apiKey = process.env.QWEN_API_KEY;
+    if (!apiKey) throw new Error('QWEN_API_KEY environment variable is required');
+
+    _client = new OpenAI({
+      apiKey,
+      baseURL:
+        process.env.QWEN_BASE_URL ||
+        'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
+    });
   }
   return _client;
 }
 
+export const MODEL = 'qwen3.5-flash';
+
 export const SYSTEM_PROMPT = `You are a legal document analyst specializing in Terms & Conditions, privacy policies, and contracts.
-Your task is to analyze the provided Terms & Conditions text and return a structured JSON object.
+Analyze the provided text and return a JSON object.
 
 You MUST return valid JSON matching EXACTLY this schema:
 {
