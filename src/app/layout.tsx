@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 /* ── SEO: Update this URL once deployed ─────────────────────── */
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://termsanalyzer.web.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://terms-analyzer.vercel.app';
 
 const title = 'Terms Analyzer — AI-Powered Legal Clarity for Terms & Conditions';
 const description =
