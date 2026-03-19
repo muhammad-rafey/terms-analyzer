@@ -46,6 +46,7 @@ Edit `.env.local`:
 QWEN_API_KEY=...              # https://dashscope.console.aliyun.com/
 QWEN_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
 MONGODB_URI=mongodb+srv://... # Atlas or local: mongodb://localhost:27017/terms-analyzer
+NEXT_PUBLIC_SITE_URL=https://your-project.web.app  # Production URL for SEO (canonical, OG, sitemap)
 ```
 
 ### 3. Run the development server
@@ -65,7 +66,8 @@ src/
 ├── app/
 │   ├── api/analyze/route.ts   # POST: analyze  |  GET: history / single lookup
 │   ├── globals.css
-│   ├── layout.tsx             # SEO metadata, fonts, theme script
+│   ├── layout.tsx             # SEO metadata, JSON-LD, fonts, theme script
+│   ├── not-found.tsx          # Custom 404 page
 │   ├── page.tsx               # Single-page app
 │   ├── robots.ts              # robots.txt generation
 │   └── sitemap.ts             # sitemap.xml generation
@@ -132,6 +134,40 @@ Returns the full analysis document by ID.
 ## Caching
 
 Identical inputs (by SHA-256 hash) return cached results for up to 7 days, avoiding redundant API calls. MongoDB documents are auto-deleted after 30 days via TTL index.
+
+---
+
+## SEO
+
+The app ships with a full SEO setup out of the box. All SEO metadata is driven by the `NEXT_PUBLIC_SITE_URL` environment variable -- set it to your production domain before deploying.
+
+### What's included
+
+| Feature | Implementation |
+|---------|---------------|
+| Title & description | Keyword-rich defaults via Next.js `Metadata` API (`layout.tsx`) |
+| Open Graph tags | `og:type`, `og:locale`, `og:url`, `og:siteName`, `og:title`, `og:description` |
+| Twitter Cards | `summary_large_image` card with title and description |
+| Canonical URL | Auto-generated from `metadataBase` + `alternates.canonical` |
+| `robots.txt` | Dynamic via `robots.ts` -- allows `/`, disallows `/api/` |
+| `sitemap.xml` | Dynamic via `sitemap.ts` -- home page with weekly change frequency |
+| JSON-LD | `WebApplication` schema with feature list and free pricing |
+| Heading hierarchy | Proper `h1` > `h2` structure across all pages |
+| Semantic HTML | `section`, `article`, `nav`, `main`, `header`, `footer` landmarks |
+| Accessibility | `aria-live` for dynamic results, `aria-label` on controls, `role="alert"` on errors, screen-reader-only labels, skip-to-content link |
+| Security headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
+| Custom 404 | `not-found.tsx` with `noindex` meta and link back to home |
+| Googlebot directives | `max-image-preview: large`, `max-snippet: -1`, `max-video-preview: -1` |
+
+### Configuring for production
+
+Set the environment variable to your deployed URL:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://your-project.web.app
+```
+
+This single variable controls canonical URLs, Open Graph URLs, `sitemap.xml` entries, and `robots.txt` sitemap references. Falls back to `https://termsanalyzer.web.app` if unset.
 
 ---
 
