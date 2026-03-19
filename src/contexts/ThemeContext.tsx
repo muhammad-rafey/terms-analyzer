@@ -21,6 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem('theme') as Theme | null;
     const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const initial = stored ?? preferred;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Necessary for SSR theme hydration; inline script prevents flash, this syncs React state
     setTheme(initial);
     document.documentElement.classList.toggle('dark', initial === 'dark');
   }, []);

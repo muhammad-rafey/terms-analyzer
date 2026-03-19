@@ -1,44 +1,56 @@
-import { BookOpen } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import type { LegalClarity } from '@/types/analysis';
 
 interface Props {
   legalClarity: LegalClarity;
 }
 
-function getScoreColor(score: number) {
-  if (score >= 8) return { bar: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' };
-  if (score >= 5) return { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' };
-  return { bar: 'bg-red-500', text: 'text-red-600 dark:text-red-400' };
+function getColors(score: number) {
+  if (score >= 8)
+    return {
+      bar: 'bg-emerald-500',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      track: 'bg-emerald-100 dark:bg-emerald-900/30',
+    };
+  if (score >= 5)
+    return {
+      bar: 'bg-amber-500',
+      text: 'text-amber-600 dark:text-amber-400',
+      track: 'bg-amber-100 dark:bg-amber-900/30',
+    };
+  return {
+    bar: 'bg-red-500',
+    text: 'text-red-600 dark:text-red-400',
+    track: 'bg-red-100 dark:bg-red-900/30',
+  };
 }
 
 export default function ClarityCard({ legalClarity }: Props) {
   const { score, label, explanation } = legalClarity;
-  const { bar, text } = getScoreColor(score);
+  const { bar, text, track } = getColors(score);
   const pct = (score / 10) * 100;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+    <article className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
       <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
-          <BookOpen size={16} className="text-purple-600 dark:text-purple-400" />
-        </div>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Legal Clarity</h2>
+        <Eye size={14} className="text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+        <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Legal Clarity</h2>
       </div>
 
-      <div className="mb-4 flex items-end gap-3">
-        <span className={`text-4xl font-bold ${text}`}>{score}</span>
-        <span className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">/ 10</span>
-        <span className={`mb-1 ml-auto text-sm font-medium ${text}`}>{label}</span>
+      <div className="mb-3 flex items-baseline gap-1.5">
+        <span className={`font-mono text-3xl font-black tracking-tight ${text}`}>{score}</span>
+        <span className="text-sm text-zinc-400 dark:text-zinc-500">/10</span>
+        <span className={`ml-auto text-sm font-semibold ${text}`}>{label}</span>
       </div>
 
-      <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
+      <div className={`mb-4 h-1.5 w-full overflow-hidden rounded-full ${track}`}>
         <div
-          className={`h-full rounded-full transition-all duration-500 ${bar}`}
+          className={`h-full rounded-full anim-bar-fill ${bar}`}
           style={{ width: `${pct}%` }}
         />
       </div>
 
-      <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{explanation}</p>
-    </div>
+      <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{explanation}</p>
+    </article>
   );
 }

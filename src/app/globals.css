@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f4f4f5;
+  --background: #fafafa;
   --foreground: #18181b;
 }
 
@@ -28,4 +28,53 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bar-fill {
+  from {
+    width: 0%;
+  }
+}
+
+.anim-fade-in-up {
+  animation: fade-in-up 0.45s ease-out both;
+}
+
+.anim-stagger-1 { animation-delay: 0.06s; }
+.anim-stagger-2 { animation-delay: 0.14s; }
+.anim-stagger-3 { animation-delay: 0.22s; }
+.anim-stagger-4 { animation-delay: 0.30s; }
+
+.anim-bar-fill {
+  animation: bar-fill 0.8s ease-out both;
+  animation-delay: 0.3s;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+
+.scroll-thin::-webkit-scrollbar {
+  height: 3px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+  border-radius: 3px;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
 }

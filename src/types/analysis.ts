@@ -31,6 +31,7 @@ export interface AnalysisResponse {
   legalClarity: LegalClarity;
   modelUsed: string;
   tokensUsed: number;
+  estimatedCostUsd: number;
   processingTimeMs: number;
   createdAt?: string;
 }

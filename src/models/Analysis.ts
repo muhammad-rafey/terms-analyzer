@@ -12,6 +12,7 @@ export interface IAnalysis extends Document {
   legalClarity: LegalClarity;
   modelUsed: string;
   tokensUsed: number;
+  estimatedCostUsd: number;
   processingTimeMs: number;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +43,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
     },
     modelUsed: { type: String, required: true },
     tokensUsed: { type: Number, default: 0 },
+    estimatedCostUsd: { type: Number, default: 0 },
     processingTimeMs: { type: Number, default: 0 },
   },
   { timestamps: true }

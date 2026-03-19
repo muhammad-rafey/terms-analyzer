@@ -8,7 +8,7 @@ AI-powered Terms & Conditions analyzer. Paste any legal agreement and instantly 
 - **Key Highlights** — the 5–10 things you actually need to know
 - **Legal Clarity Score** — how readable the document is (1–10)
 
-Built with Next.js 15, MongoDB (caching), Qwen3.5-Flash, and Tailwind CSS. Includes dark mode.
+Built with Next.js 16, MongoDB (caching), Qwen3.5-Flash, and Tailwind CSS. Includes dark mode and SEO.
 
 ---
 
@@ -16,7 +16,7 @@ Built with Next.js 15, MongoDB (caching), Qwen3.5-Flash, and Tailwind CSS. Inclu
 
 | Layer | Tech |
 |-------|------|
-| Framework | Next.js 15 (App Router, TypeScript) |
+| Framework | Next.js 16 (App Router, TypeScript) |
 | AI | Qwen3.5-Flash (via OpenAI-compatible SDK) |
 | Database | MongoDB + Mongoose |
 | Styling | Tailwind CSS v4 |
@@ -63,16 +63,17 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 src/
 ├── app/
-│   ├── api/analyze/route.ts   # POST: analyze T&C  |  GET: history
+│   ├── api/analyze/route.ts   # POST: analyze  |  GET: history / single lookup
 │   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx               # Single-page app
+│   ├── layout.tsx             # SEO metadata, fonts, theme script
+│   ├── page.tsx               # Single-page app
+│   ├── robots.ts              # robots.txt generation
+│   └── sitemap.ts             # sitemap.xml generation
 ├── components/
 │   ├── Header.tsx             # Logo + dark mode toggle
 │   ├── InputPanel.tsx         # Textarea + submit
 │   ├── ResultsPanel.tsx       # Composes all result cards
 │   ├── SummaryCard.tsx
-│   ├── RiskBadge.tsx
 │   ├── ShenanigansCard.tsx
 │   ├── HighlightsCard.tsx
 │   ├── ClarityCard.tsx
@@ -121,6 +122,10 @@ Analyze a Terms & Conditions document.
 ### `GET /api/analyze`
 
 Returns the 10 most recent analyses (preview only).
+
+### `GET /api/analyze?id=<id>`
+
+Returns the full analysis document by ID.
 
 ---
 

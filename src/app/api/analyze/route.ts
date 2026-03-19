@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
         legalClarity: cached.legalClarity,
         modelUsed: cached.modelUsed,
         tokensUsed: cached.tokensUsed,
+        estimatedCostUsd: cached.estimatedCostUsd,
         processingTimeMs: cached.processingTimeMs,
         createdAt: cached.createdAt.toISOString(),
       };
@@ -98,16 +99,23 @@ export async function POST(req: NextRequest) {
           },
         ],
         temperature: 0.2,
-        max_tokens: 2000,
+        max_tokens: 4096,
         response_format: { type: 'json_object' },
-        // @ts-ignore — Qwen-specific, not in OpenAI types
+        // @ts-expect-error — Qwen-specific, not in OpenAI types
         extra_body: { enable_thinking: false },
       },
       { timeout: 90000 }
     );
 
     const processingTimeMs = Date.now() - start;
-    const tokensUsed = completion.usage?.total_tokens ?? 0;
+    const inputTokens = completion.usage?.prompt_tokens ?? 0;
+    const outputTokens = completion.usage?.completion_tokens ?? 0;
+    const tokensUsed = inputTokens + outputTokens;
+
+    // Qwen3.5-Flash: $0.10/1M input, $0.40/1M output
+    const estimatedCostUsd =
+      (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.40;
+
     const raw = completion.choices[0]?.message?.content ?? '{}';
 
     let parsed: unknown;
@@ -142,6 +150,7 @@ export async function POST(req: NextRequest) {
       legalClarity: result.legalClarity,
       modelUsed: MODEL,
       tokensUsed,
+      estimatedCostUsd,
       processingTimeMs,
     });
 
@@ -155,6 +164,7 @@ export async function POST(req: NextRequest) {
       legalClarity: analysis.legalClarity,
       modelUsed: analysis.modelUsed,
       tokensUsed: analysis.tokensUsed,
+      estimatedCostUsd: analysis.estimatedCostUsd,
       processingTimeMs: analysis.processingTimeMs,
       createdAt: analysis.createdAt.toISOString(),
     };
@@ -171,9 +181,32 @@ export async function POST(req: NextRequest) {
 
 // ── GET /api/analyze — history ────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
+
+    const id = req.nextUrl.searchParams.get('id');
+    if (id) {
+      const analysis = await Analysis.findById(id);
+      if (!analysis) {
+        return NextResponse.json({ success: false, error: 'Analysis not found.' }, { status: 404 });
+      }
+      const data: AnalysisResponse = {
+        _id: analysis._id.toString(),
+        summary: analysis.summary,
+        riskLevel: analysis.riskLevel,
+        riskRationale: analysis.riskRationale,
+        shenanigans: analysis.shenanigans,
+        highlights: analysis.highlights,
+        legalClarity: analysis.legalClarity,
+        modelUsed: analysis.modelUsed,
+        tokensUsed: analysis.tokensUsed,
+        estimatedCostUsd: analysis.estimatedCostUsd,
+        processingTimeMs: analysis.processingTimeMs,
+        createdAt: analysis.createdAt.toISOString(),
+      };
+      return NextResponse.json({ success: true, data });
+    }
 
     const analyses = await Analysis.find({})
       .sort({ createdAt: -1 })
