@@ -1,11 +1,10 @@
 import type { MetadataRoute } from 'next';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://termsanalyzer.web.app';
+import { getSiteUrl } from '@/lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: SITE_URL,
+      url: getSiteUrl(),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,

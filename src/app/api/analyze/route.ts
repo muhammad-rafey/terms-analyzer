@@ -6,6 +6,12 @@ import { Analysis } from '@/models/Analysis';
 import { getQwenClient, MODEL, SYSTEM_PROMPT } from '@/lib/qwen';
 import type { AnalysisResponse, HistoryItem } from '@/types/analysis';
 
+// Vercel: opt into the Hobby plan's 60s max function duration.
+// Without this, the default is 10s, which will cut off long Qwen calls.
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 // ── Zod schema for Qwen response validation ───────────────────────────────────
 
 const RiskLevelSchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
@@ -56,32 +62,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    const db = await connectToDatabase();
 
     const inputHash = hashText(text);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const cached = await Analysis.findOne({
-      inputHash,
-      createdAt: { $gte: sevenDaysAgo },
-    }).sort({ createdAt: -1 });
+    if (db) {
+      const cached = await Analysis.findOne({
+        inputHash,
+        createdAt: { $gte: sevenDaysAgo },
+      }).sort({ createdAt: -1 });
 
-    if (cached) {
-      const data: AnalysisResponse = {
-        _id: cached._id.toString(),
-        summary: cached.summary,
-        riskLevel: cached.riskLevel,
-        riskRationale: cached.riskRationale,
-        shenanigans: cached.shenanigans,
-        highlights: cached.highlights,
-        legalClarity: cached.legalClarity,
-        modelUsed: cached.modelUsed,
-        tokensUsed: cached.tokensUsed,
-        estimatedCostUsd: cached.estimatedCostUsd,
-        processingTimeMs: cached.processingTimeMs,
-        createdAt: cached.createdAt.toISOString(),
-      };
-      return NextResponse.json({ success: true, data, cached: true });
+      if (cached) {
+        const data: AnalysisResponse = {
+          _id: cached._id.toString(),
+          summary: cached.summary,
+          riskLevel: cached.riskLevel,
+          riskRationale: cached.riskRationale,
+          shenanigans: cached.shenanigans,
+          highlights: cached.highlights,
+          legalClarity: cached.legalClarity,
+          modelUsed: cached.modelUsed,
+          tokensUsed: cached.tokensUsed,
+          estimatedCostUsd: cached.estimatedCostUsd,
+          processingTimeMs: cached.processingTimeMs,
+          createdAt: cached.createdAt.toISOString(),
+        };
+        return NextResponse.json({ success: true, data, cached: true });
+      }
     }
 
     // ── Call Qwen ─────────────────────────────────────────────────────────────
@@ -104,7 +112,7 @@ export async function POST(req: NextRequest) {
         // @ts-expect-error — Qwen-specific, not in OpenAI types
         extra_body: { enable_thinking: false },
       },
-      { timeout: 90000 }
+      { timeout: 55000 }
     );
 
     const processingTimeMs = Date.now() - start;
@@ -139,9 +147,43 @@ export async function POST(req: NextRequest) {
 
     const result = validated.data;
 
-    const analysis = await Analysis.create({
-      inputHash,
-      rawText: text,
+    // Persist to MongoDB only when configured; otherwise return the fresh
+    // analysis directly so the app still works in a zero-setup deploy.
+    if (db) {
+      const analysis = await Analysis.create({
+        inputHash,
+        rawText: text,
+        summary: result.summary,
+        riskLevel: result.riskLevel,
+        riskRationale: result.riskRationale,
+        shenanigans: result.shenanigans,
+        highlights: result.highlights,
+        legalClarity: result.legalClarity,
+        modelUsed: MODEL,
+        tokensUsed,
+        estimatedCostUsd,
+        processingTimeMs,
+      });
+
+      const data: AnalysisResponse = {
+        _id: analysis._id.toString(),
+        summary: analysis.summary,
+        riskLevel: analysis.riskLevel,
+        riskRationale: analysis.riskRationale,
+        shenanigans: analysis.shenanigans,
+        highlights: analysis.highlights,
+        legalClarity: analysis.legalClarity,
+        modelUsed: analysis.modelUsed,
+        tokensUsed: analysis.tokensUsed,
+        estimatedCostUsd: analysis.estimatedCostUsd,
+        processingTimeMs: analysis.processingTimeMs,
+        createdAt: analysis.createdAt.toISOString(),
+      };
+
+      return NextResponse.json({ success: true, data, cached: false });
+    }
+
+    const data: AnalysisResponse = {
       summary: result.summary,
       riskLevel: result.riskLevel,
       riskRationale: result.riskRationale,
@@ -152,21 +194,6 @@ export async function POST(req: NextRequest) {
       tokensUsed,
       estimatedCostUsd,
       processingTimeMs,
-    });
-
-    const data: AnalysisResponse = {
-      _id: analysis._id.toString(),
-      summary: analysis.summary,
-      riskLevel: analysis.riskLevel,
-      riskRationale: analysis.riskRationale,
-      shenanigans: analysis.shenanigans,
-      highlights: analysis.highlights,
-      legalClarity: analysis.legalClarity,
-      modelUsed: analysis.modelUsed,
-      tokensUsed: analysis.tokensUsed,
-      estimatedCostUsd: analysis.estimatedCostUsd,
-      processingTimeMs: analysis.processingTimeMs,
-      createdAt: analysis.createdAt.toISOString(),
     };
 
     return NextResponse.json({ success: true, data, cached: false });
@@ -183,9 +210,18 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    const db = await connectToDatabase();
 
     const id = req.nextUrl.searchParams.get('id');
+
+    // Without a DB there is no history to return and nothing to look up by id.
+    if (!db) {
+      if (id) {
+        return NextResponse.json({ success: false, error: 'Analysis not found.' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, data: [] });
+    }
+
     if (id) {
       const analysis = await Analysis.findById(id);
       if (!analysis) {
