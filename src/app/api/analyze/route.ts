@@ -4,6 +4,12 @@ import { z } from 'zod';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Analysis } from '@/models/Analysis';
 import { getQwenClient, MODEL, SYSTEM_PROMPT } from '@/lib/qwen';
+import {
+  sanitizeUserText,
+  buildUserMessage,
+  generateNonce,
+  assertNoLeakage,
+} from '@/lib/sanitize';
 import type { AnalysisResponse, HistoryItem } from '@/types/analysis';
 
 // Vercel: opt into the Hobby plan's 60s max function duration.
@@ -62,9 +68,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sanitize untrusted user input before it touches the LLM prompt.
+    const { sanitized } = sanitizeUserText(text);
+    if (sanitized.trim().length < 50) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Please provide at least 50 characters of readable text to analyze.',
+        },
+        { status: 400 }
+      );
+    }
+    const nonce = generateNonce();
+
     const db = await connectToDatabase();
 
-    const inputHash = hashText(text);
+    const inputHash = hashText(sanitized);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     if (db) {
@@ -103,7 +122,7 @@ export async function POST(req: NextRequest) {
           { role: 'system', content: SYSTEM_PROMPT },
           {
             role: 'user',
-            content: `Analyze the following Terms & Conditions text and return a JSON object:\n\n---\n${text}\n---`,
+            content: buildUserMessage(sanitized, nonce),
           },
         ],
         temperature: 0.2,
@@ -147,12 +166,23 @@ export async function POST(req: NextRequest) {
 
     const result = validated.data;
 
+    // Deterministic safety check after Zod: catch prompt leakage, tag echo,
+    // or absurdly-long outputs that indicate an injection succeeded.
+    const leakageCheck = assertNoLeakage(result, nonce);
+    if (!leakageCheck.ok) {
+      console.error('[analyze] leakage check failed:', leakageCheck.reason);
+      return NextResponse.json(
+        { success: false, error: 'AI response failed safety checks. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     // Persist to MongoDB only when configured; otherwise return the fresh
     // analysis directly so the app still works in a zero-setup deploy.
     if (db) {
       const analysis = await Analysis.create({
         inputHash,
-        rawText: text,
+        rawText: sanitized,
         summary: result.summary,
         riskLevel: result.riskLevel,
         riskRationale: result.riskRationale,
