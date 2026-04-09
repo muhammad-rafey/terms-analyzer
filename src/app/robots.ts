@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://termsanalyzer.web.app';
+import { getSiteUrl } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getSiteUrl();
   return {
     rules: [
       {
@@ -11,6 +11,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/'],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
   };
 }

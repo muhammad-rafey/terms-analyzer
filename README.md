@@ -43,11 +43,16 @@ cp .env.example .env.local
 Edit `.env.local`:
 
 ```bash
+# Required
 QWEN_API_KEY=...              # https://dashscope.console.aliyun.com/
+
+# Optional
 QWEN_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
-MONGODB_URI=mongodb+srv://... # Atlas or local: mongodb://localhost:27017/terms-analyzer
-NEXT_PUBLIC_SITE_URL=https://your-project.web.app  # Production URL for SEO (canonical, OG, sitemap)
+MONGODB_URI=mongodb+srv://... # Optional — enables caching + history. Atlas or local: mongodb://localhost:27017/terms-analyzer
+NEXT_PUBLIC_SITE_URL=http://localhost:3000  # Optional on Vercel (auto-detected); set for custom domains
 ```
+
+Only `QWEN_API_KEY` is required. Without `MONGODB_URI` the app runs in stateless mode — every request calls Qwen and there is no history panel.
 
 ### 3. Run the development server
 
@@ -56,6 +61,26 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Deploy to Vercel (free tier)
+
+This app is configured to run on the **Vercel Hobby plan** out of the box:
+
+1. Push the repo to GitHub.
+2. Go to [vercel.com/new](https://vercel.com/new) and import the repo.
+3. Set the environment variables in the Vercel dashboard:
+   - `QWEN_API_KEY` — **required**
+   - `MONGODB_URI` — optional (omit for a zero-setup deploy)
+   - `NEXT_PUBLIC_SITE_URL` — optional (only needed for a custom domain)
+4. Click **Deploy**.
+
+**How it fits the Hobby plan:** Vercel Hobby functions default to a 10-second timeout, which is not enough for a Qwen call. The `POST /api/analyze` route opts into the 60-second maximum via `export const maxDuration = 60`, and the Qwen SDK uses a 55-second client-side timeout so errors surface cleanly inside the function budget.
+
+**MongoDB is optional.** If you leave `MONGODB_URI` unset, the analyzer still works — it just skips caching and the recent-analyses history. To enable both, create a free MongoDB Atlas M0 cluster and paste its connection string into the Vercel env var.
+
+**Site URL is auto-detected.** On Vercel, `getSiteUrl()` (see `src/lib/site.ts`) picks up `VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL` automatically, so canonical URLs, Open Graph tags, `robots.txt`, and `sitemap.xml` all point at your deployment without any extra config. Override with `NEXT_PUBLIC_SITE_URL` only when using a custom domain.
 
 ---
 
@@ -161,13 +186,13 @@ The app ships with a full SEO setup out of the box. All SEO metadata is driven b
 
 ### Configuring for production
 
-Set the environment variable to your deployed URL:
+On Vercel, no config is needed — the site URL is auto-detected from `VERCEL_PROJECT_PRODUCTION_URL`. For a custom domain, set:
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://your-project.web.app
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
-This single variable controls canonical URLs, Open Graph URLs, `sitemap.xml` entries, and `robots.txt` sitemap references. Falls back to `https://termsanalyzer.web.app` if unset.
+This single variable controls canonical URLs, Open Graph URLs, `sitemap.xml` entries, and `robots.txt` sitemap references. Detection order is defined in `src/lib/site.ts`: `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → `VERCEL_URL` → `http://localhost:3000`.
 
 ---
 

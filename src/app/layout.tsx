@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { getSiteUrl } from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-/* ── SEO: Update this URL once deployed ─────────────────────── */
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://terms-analyzer.vercel.app';
+/* ── SEO: auto-detected from Vercel env; override via NEXT_PUBLIC_SITE_URL ── */
+const SITE_URL = getSiteUrl();
 
 const title = 'Terms Analyzer — AI-Powered Legal Clarity for Terms & Conditions';
 const description =
