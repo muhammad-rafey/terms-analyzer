@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowRight, X, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ArrowRight, X, Loader2, Upload } from 'lucide-react';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -13,11 +13,42 @@ const WARN_CHARS = 80_000;
 
 export default function InputPanel({ onSubmit, isLoading }: Props) {
   const [text, setText] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (text.trim().length >= 50 && !isLoading) {
       onSubmit(text);
+    }
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setUploadError(null);
+
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('File is too large (max 2MB).');
+      return;
+    }
+
+    const isText =
+      file.type.startsWith('text/') ||
+      /\.(txt|md|markdown|csv|html?|json|log|rtf)$/i.test(file.name);
+
+    if (!isText) {
+      setUploadError('Only text files are supported (.txt, .md, .csv, .html, .json). PDF/DOCX coming soon.');
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      setText(content.slice(0, MAX_CHARS));
+    } catch {
+      setUploadError('Could not read the file. Please try another.');
     }
   }
 
@@ -46,7 +77,7 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
             type="button"
             onClick={() => setText('')}
             aria-label="Clear text"
-            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
           >
             <X size={13} />
           </button>
@@ -54,30 +85,51 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-4">
-        <span
-          className={`font-mono text-xs tabular-nums ${
-            isOverLimit
-              ? 'text-red-500 dark:text-red-400'
-              : isNearLimit
-              ? 'text-amber-500 dark:text-amber-400'
-              : 'text-zinc-400 dark:text-zinc-500'
-          }`}
-        >
-          {charCount > 0 ? (
-            <>
-              {charCount.toLocaleString()}/{MAX_CHARS.toLocaleString()}
-              {isOverLimit && ' — over limit'}
-              {isNearLimit && !isOverLimit && ' — near limit'}
-            </>
-          ) : (
-            <span className="invisible">0</span>
-          )}
-        </span>
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,.markdown,.csv,.html,.htm,.json,.log,.rtf,text/*"
+            onChange={handleFile}
+            className="hidden"
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            aria-label="Upload a document"
+            title="Upload a document (.txt, .md, .csv, .html, .json)"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:border-teal-500 hover:text-teal-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-teal-400 dark:hover:text-teal-400"
+          >
+            <Upload size={14} />
+          </button>
+
+          <span
+            className={`font-mono text-xs tabular-nums ${
+              isOverLimit
+                ? 'text-red-500 dark:text-red-400'
+                : isNearLimit
+                ? 'text-amber-500 dark:text-amber-400'
+                : 'text-zinc-400 dark:text-zinc-500'
+            }`}
+          >
+            {charCount > 0 ? (
+              <>
+                {charCount.toLocaleString()}/{MAX_CHARS.toLocaleString()}
+                {isOverLimit && ' — over limit'}
+                {isNearLimit && !isOverLimit && ' — near limit'}
+              </>
+            ) : (
+              <span className="invisible">0</span>
+            )}
+          </span>
+        </div>
 
         <button
           type="submit"
           disabled={isTooShort || isOverLimit || isLoading}
-          className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-500 dark:hover:bg-teal-600"
+          className="flex cursor-pointer items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-500 dark:hover:bg-teal-600"
         >
           {isLoading ? (
             <>
@@ -92,6 +144,12 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
           )}
         </button>
       </div>
+
+      {uploadError && (
+        <p role="alert" className="mt-2 text-xs text-red-500 dark:text-red-400">
+          {uploadError}
+        </p>
+      )}
     </form>
   );
 }

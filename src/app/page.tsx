@@ -1,161 +1,138 @@
-'use client';
-
-import { useState, useEffect, useRef } from 'react';
-import { AlertCircle } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { FileText, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
-import InputPanel from '@/components/InputPanel';
-import ResultsPanel from '@/components/ResultsPanel';
-import LoadingOverlay from '@/components/LoadingOverlay';
-import HistoryPanel from '@/components/HistoryPanel';
-import type { AnalysisResponse, HistoryItem } from '@/types/analysis';
 
-export default function Home() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
-  const [cached, setCached] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const resultsRef = useRef<HTMLDivElement>(null);
+const pageTitle = 'Terms Analyzer — Understand any T&C in seconds';
+const pageDescription =
+  'Free AI tool that turns dense Terms & Conditions, Privacy Policies, and EULAs into plain-English summaries. Spot risks, hidden costs, and key clauses instantly.';
 
-  useEffect(() => {
-    fetch('/api/analyze')
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setHistory(json.data);
-      })
-      .catch((err) => console.warn('[history] Failed to load:', err));
-  }, []);
+export const metadata: Metadata = {
+  title: pageTitle,
+  description: pageDescription,
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: pageTitle,
+    description: pageDescription,
+    url: '/',
+  },
+  twitter: {
+    title: pageTitle,
+    description: pageDescription,
+  },
+};
 
-  async function handleAnalyze(text: string) {
-    setIsLoading(true);
-    setError(null);
-    setAnalysis(null);
+const faqs = [
+  {
+    q: 'Is Terms Analyzer free to use?',
+    a: 'Yes. Terms Analyzer is completely free — no signup, no credit card, no hidden tiers.',
+  },
+  {
+    q: 'Is my document stored or shared?',
+    a: 'Analyses may be cached to speed up repeat lookups, but documents are never sold or shared. The tool is designed for informational use only.',
+  },
+  {
+    q: 'What documents can I analyze?',
+    a: 'Any text-based legal document: Terms of Service, Privacy Policies, EULAs, cookie notices, refund policies, and user agreements. Paste the text directly or upload a .txt, .md, .html, or .json file.',
+  },
+  {
+    q: 'Is this legal advice?',
+    a: 'No. Terms Analyzer provides an AI-generated summary for informational purposes only. It is not a substitute for advice from a qualified lawyer.',
+  },
+];
 
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
+export default function Landing() {
+  const steps = [
+    { icon: FileText, title: 'Paste your document', body: 'Drop in any T&C, privacy policy, or EULA.' },
+    { icon: Sparkles, title: 'AI analyzes instantly', body: 'Risks, hidden costs, and key clauses surfaced.' },
+    { icon: ShieldCheck, title: 'Read in plain English', body: 'Get a clear summary and clarity score.' },
+  ];
 
-      const json = await res.json();
-
-      if (!json.success) {
-        setError(json.error ?? 'Something went wrong. Please try again.');
-        return;
-      }
-
-      setAnalysis(json.data);
-      setCached(json.cached ?? false);
-
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-
-      // Refresh history
-      fetch('/api/analyze')
-        .then((r) => r.json())
-        .then((h) => { if (h.success) setHistory(h.data); })
-        .catch((err) => console.warn('[history] Failed to refresh:', err));
-    } catch {
-      setError('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleHistorySelect(item: HistoryItem) {
-    setIsLoading(true);
-    setError(null);
-    setAnalysis(null);
-
-    try {
-      const res = await fetch(`/api/analyze?id=${item._id}`);
-      const json = await res.json();
-
-      if (!json.success) {
-        setError(json.error ?? 'Failed to load analysis.');
-        return;
-      }
-
-      setAnalysis(json.data);
-      setCached(true);
-
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } catch {
-      setError('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Header />
 
-      <main id="main-content" className="mx-auto max-w-3xl px-5 pb-16 pt-8 sm:px-6">
-        {/* Hero / intro */}
-        <section aria-labelledby="page-heading" className="mb-5">
-          <h1
-            id="page-heading"
-            className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl"
-          >
-            Analyze Terms & Conditions
+      <main id="main-content" className="mx-auto max-w-3xl px-5 pb-16 pt-12 sm:px-6 sm:pt-16">
+        {/* Hero */}
+        <section className="anim-fade-in-up text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
+            Understand any Terms & Conditions in seconds
           </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Paste any legal document. Get instant clarity on risks, hidden costs, and what matters.
+          <p className="mx-auto mt-3 max-w-xl text-sm text-zinc-500 dark:text-zinc-400 sm:text-base">
+            AI-powered clarity on risks, hidden costs, and what really matters.
           </p>
         </section>
 
-        {/* Input */}
-        <section aria-label="Paste your legal document">
-          <InputPanel onSubmit={handleAnalyze} isLoading={isLoading} />
+        {/* How it works */}
+        <section aria-labelledby="how-heading" className="mt-12 sm:mt-16">
+          <h2
+            id="how-heading"
+            className="text-center text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+          >
+            How it works
+          </h2>
+          <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+            {steps.map(({ icon: Icon, title, body }, i) => (
+              <li
+                key={i}
+                className="rounded-xl border border-zinc-200/60 bg-white p-5 dark:border-zinc-800/60 dark:bg-zinc-900/40"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 dark:bg-teal-500">
+                  <Icon size={16} className="text-white" />
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{body}</p>
+              </li>
+            ))}
+          </ol>
         </section>
 
-        {/* History */}
-        {history.length > 0 && (
-          <nav aria-label="Recent analyses" className="mt-5">
-            <HistoryPanel items={history} onSelect={handleHistorySelect} />
-          </nav>
-        )}
+        {/* CTA */}
+        <section className="mt-12 text-center sm:mt-16">
+          <Link
+            href="/analyzer"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-500 dark:bg-teal-500 dark:hover:bg-teal-400"
+          >
+            Analyze a document <ArrowRight size={15} />
+          </Link>
+        </section>
 
-        {/* Results area */}
-        <section
-          ref={resultsRef}
-          aria-label="Analysis results"
-          aria-live="polite"
-          className="mt-8 scroll-mt-16"
-        >
-          {error && (
-            <div role="alert" className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 dark:border-red-900/50 dark:bg-red-950/30">
-              <AlertCircle size={15} className="mt-0.5 shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-            </div>
-          )}
-
-          {isLoading && <LoadingOverlay />}
-
-          {!isLoading && analysis && (
-            <ResultsPanel
-              analysis={analysis}
-              processingMs={analysis.processingTimeMs}
-              cached={cached}
-            />
-          )}
-
-          {!isLoading && !analysis && !error && (
-            <p className="py-12 text-center text-xs text-zinc-400 dark:text-zinc-600">
-              Your analysis results will appear here
-            </p>
-          )}
+        {/* FAQ */}
+        <section aria-labelledby="faq-heading" className="mt-16 sm:mt-20">
+          <h2
+            id="faq-heading"
+            className="text-center text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+          >
+            Frequently asked questions
+          </h2>
+          <dl className="mt-6 divide-y divide-zinc-200/60 rounded-xl border border-zinc-200/60 bg-white dark:divide-zinc-800/60 dark:border-zinc-800/60 dark:bg-zinc-900/40">
+            {faqs.map((f, i) => (
+              <div key={i} className="px-5 py-4 sm:px-6">
+                <dt className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.q}</dt>
+                <dd className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       </main>
 
       <footer className="border-t border-zinc-200/60 py-5 text-center dark:border-zinc-800/60">
         <p className="text-xs text-zinc-400 dark:text-zinc-600">
-          Powered by Qwen3.5-Flash · Not legal advice · For informational purposes only
+          For informational purposes only
         </p>
       </footer>
     </div>

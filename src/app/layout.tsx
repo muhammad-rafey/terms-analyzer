@@ -1,8 +1,17 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { getSiteUrl } from '@/lib/site';
 import './globals.css';
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+};
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -74,6 +83,7 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
   },
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
