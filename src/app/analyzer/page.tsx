@@ -165,8 +165,7 @@ export default function Analyzer() {
 
       <footer className="border-t border-zinc-200/60 py-5 text-center dark:border-zinc-800/60">
         <p className="text-xs text-zinc-400 dark:text-zinc-600">
-         For informational purposes only
-        </p>
+ Powered by Qwen3.5-Flash · Not legal advice · For informational purposes only        </p>
       </footer>
     </div>
   );
