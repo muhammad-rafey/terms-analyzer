@@ -23,6 +23,42 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
     }
   }
 
+  async function extractPdfText(file: File): Promise<string> {
+    const pdfjs = await import('pdfjs-dist');
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(
+        content.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' '),
+      );
+    }
+    return pages.join('\n\n');
+  }
+
+  async function extractDocxText(file: File): Promise<string> {
+    const mammoth = await import('mammoth');
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  }
+
+  async function extractDocText(file: File): Promise<string> {
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch('/api/parse-doc', { method: 'POST', body });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error ?? 'Could not parse .doc file.');
+    }
+    return json.text as string;
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -35,17 +71,24 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
       return;
     }
 
-    const isText =
-      file.type.startsWith('text/') ||
-      /\.(txt|md|markdown|csv|html?|json|log|rtf)$/i.test(file.name);
+    const ext = file.name.toLowerCase().match(/\.([^.]+)$/)?.[1] ?? '';
 
-    if (!isText) {
-      setUploadError('Only text files are supported (.txt, .md, .csv, .html, .json). PDF/DOCX coming soon.');
+    if (ext !== 'txt' && ext !== 'pdf' && ext !== 'doc' && ext !== 'docx') {
+      setUploadError('Only PDF, TXT, and Word (.doc, .docx) files are supported.');
       return;
     }
 
     try {
-      const content = await file.text();
+      let content: string;
+      if (ext === 'pdf') {
+        content = await extractPdfText(file);
+      } else if (ext === 'docx') {
+        content = await extractDocxText(file);
+      } else if (ext === 'doc') {
+        content = await extractDocText(file);
+      } else {
+        content = await file.text();
+      }
       setText(content.slice(0, MAX_CHARS));
     } catch {
       setUploadError('Could not read the file. Please try another.');
@@ -89,7 +132,7 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.markdown,.csv,.html,.htm,.json,.log,.rtf,text/*"
+            accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFile}
             className="hidden"
             aria-hidden="true"
@@ -99,7 +142,7 @@ export default function InputPanel({ onSubmit, isLoading }: Props) {
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
             aria-label="Upload a document"
-            title="Upload a document (.txt, .md, .csv, .html, .json)"
+            title="Upload a document (PDF, TXT, Word)"
             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:border-teal-500 hover:text-teal-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-teal-400 dark:hover:text-teal-400"
           >
             <Upload size={14} />
